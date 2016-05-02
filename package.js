@@ -32,10 +32,10 @@ Package.onUse(function(api) {
   api.addFiles('lib/accounts.coffee');
   api.addFiles('lib/buildReferences.coffee');
 
+  api.addFiles('client/lib/MetaObject.js', 'client');
   api.addFiles('client/helpers/arrayify.coffee', 'client');
   api.addFiles('client/helpers/lengthGt.coffee', 'client');
   api.addFiles('client/helpers/stringify.coffee', 'client');
-  api.addFiles('client/lib/accounts.coffee', 'client');
   api.addFiles('client/views/layouts/slim.html', 'client');
   api.addFiles('client/views/components/ListMeta.html', 'client');
   api.addFiles('client/views/components/ListMeta.coffee', 'client');
