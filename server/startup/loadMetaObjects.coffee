@@ -1,3 +1,5 @@
+@Namespace = {}
+
 rebuildReferences = ->
 	Konsistent.History.setup()
 
@@ -93,3 +95,10 @@ Konsistent.start = (MetaObject, Models) ->
 				delete Templates[record._id]
 
 	mailConsumer.start()
+
+	Konsistent.MetaObject.find({type: 'namespace'}).observe
+		added: (meta) ->
+			global.Namespace = meta
+
+		changed: (meta) ->
+			global.Namespace = meta
