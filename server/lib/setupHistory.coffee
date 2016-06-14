@@ -906,7 +906,9 @@ Konsistent.History.processAlertsForOplogItem = (metaName, action, _id, data, upd
 
 	userOptions =
 		fields:
+			username: 1
 			emails: 1
+			locale: 1
 
 	try
 		userRecords = userModel.find(userQuery, userOptions).fetch()
@@ -931,45 +933,65 @@ Konsistent.History.processAlertsForOplogItem = (metaName, action, _id, data, upd
 		if field?.ignoreHistory is true
 			excludeKeys.push key
 
-	dataArray = []
+	for user in userRecords
+		rawData = {}
+		dataArray = []
 
-	for key, value of data when key not in excludeKeys
-		if key is '_id'
-			value = value
+		for key, value of data when key not in excludeKeys
+			if key is '_id'
+				value = value
 
-		field = key.split('.')[0]
-		field = meta.fields[field]
-		if field?
-			dataArray.push
-				field: utils.getLabel(field, user) or key
-				value: utils.formatValue value, field
-		else
-			dataArray.push
-				field: utils.getLabel(field, user) or key
-				value: value
+			field = key.split('.')[0]
+			field = meta.fields[field]
 
-	if dataArray?.length is 0
-		return
+			rawData[key] = value
 
-	for user in userRecords when user.emails?[0]?.address?
+			if field?
+				dataArray.push
+					field: utils.getLabel(field, user) or key
+					value: utils.formatValue value, field
+			else
+				dataArray.push
+					field: utils.getLabel(field, user) or key
+					value: value
+
+		if dataArray?.length is 0
+			continue
+
 		documentName = utils.getLabel(meta, user) or meta.name
 
-		emailData =
-			from: 'Konecty Alerts <alerts@konecty.com>'
-			to: user.emails?[0]?.address
-			subject: "[Konecty] Dado em: #{documentName} com code: #{code} foi #{actionText}"
-			template: 'alert.html'
-			data:
-				documentName: documentName
-				action: action
-				actionText: actionText
-				code: code
-				_id: _id
-				_updatedBy: updatedBy
-				_updatedAt: updatedAt
-				data: dataArray
-			type: 'Email'
-			status: 'Enviando'
-			discard: true
+		alertData =
+			documentName: documentName
+			action: action
+			actionText: actionText
+			code: code
+			_id: _id
+			_updatedBy: updatedBy
+			_updatedAt: updatedAt
+			data: dataArray
+			rawData: rawData
+			user: user
 
-		Konsistent.Models['Message'].insert emailData
+		if Namespace.RocketChat?.alertWebhook?
+			HTTP.post Namespace.RocketChat.alertWebhook, { data: alertData }, (err, response) ->
+				if err?
+					NotifyErrors.notify 'HookRocketChatAlertError', err
+					return console.log "📠 ", "Rocket.Chat Alert ERROR #{Namespace.RocketChat.alertWebhook}".red, err
+
+				if response.statusCode is 200
+					console.log "📠 ", "#{response.statusCode} Rocket.Chat Alert #{Namespace.RocketChat.alertWebhook}".green
+				else
+					console.log "📠 ", "#{response.statusCode} Rocket.Chat Alert #{Namespace.RocketChat.alertWebhook}".red
+
+		else if user.emails?[0]?.address?
+			emailData =
+				from: 'Konecty Alerts <alerts@konecty.com>'
+				to: user.emails?[0]?.address
+				subject: "[Konecty] Dado em: #{documentName} com code: #{code} foi #{actionText}"
+				template: 'alert.html'
+				data: alertData
+				type: 'Email'
+				status: 'Enviando'
+				discard: true
+
+			Konsistent.Models['Message'].insert emailData
