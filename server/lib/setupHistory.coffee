@@ -973,15 +973,17 @@ Konsistent.History.processAlertsForOplogItem = (metaName, action, _id, data, upd
 			user: user
 
 		if Namespace.RocketChat?.alertWebhook?
-			HTTP.post Namespace.RocketChat.alertWebhook, { data: alertData }, (err, response) ->
-				if err?
-					NotifyErrors.notify 'HookRocketChatAlertError', err
-					return console.log "📠 ", "Rocket.Chat Alert ERROR #{Namespace.RocketChat.alertWebhook}".red, err
+			urls = [].concat Namespace.RocketChat.alertWebhook
+			for url in urls when not _.isEmpty url
+				HTTP.post url, { data: alertData }, (err, response) ->
+					if err?
+						NotifyErrors.notify 'HookRocketChatAlertError', err
+						return console.log "📠 ", "Rocket.Chat Alert ERROR #{url}".red, err
 
-				if response.statusCode is 200
-					console.log "📠 ", "#{response.statusCode} Rocket.Chat Alert #{Namespace.RocketChat.alertWebhook}".green
-				else
-					console.log "📠 ", "#{response.statusCode} Rocket.Chat Alert #{Namespace.RocketChat.alertWebhook}".red
+					if response.statusCode is 200
+						console.log "📠 ", "#{response.statusCode} Rocket.Chat Alert #{url}".green
+					else
+						console.log "📠 ", "#{response.statusCode} Rocket.Chat Alert #{url}".red
 
 		else if user.emails?[0]?.address?
 			emailData =
