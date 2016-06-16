@@ -66,6 +66,13 @@ mailConsumer.sendEmail = (record, cb) ->
 	else
 		record.server = 'default'
 
+	if _.isObject(namespace?.emailServers) and namespace.emailServers[record.server]?.useUserCredentials is true
+		user = Konsistent.Models['User'].findOne record._user[0]._id, { fields: { name: 1, emails: 1, emailAuthLogin: 1, emailAuthPass: 1 }}
+		console.log 'IF -> user?.emailAuthLogin ->', user?.emailAuthLogin
+		if user?.emailAuthLogin
+			record.from = user.name + ' <' + user.emails[0]?.address + '>'
+			server = nodemailer.createTransport _.extend({}, _.omit(namespace.emailServers[record.server], 'useUserCredentials'), { auth: { user: user.emailAuthLogin, pass: user.emailAuthPass } })
+
 	if (not record.to? or _.isEmpty record.to) and record.email?
 		record.to = (email.address for email in [].concat(record.email)).join(',')
 
@@ -153,8 +160,9 @@ mailConsumer.start = ->
 
 	if _.isObject namespace?.emailServers
 		for key, value of namespace.emailServers
-			console.log "Setup email server [#{key}]".green
-			transporters[key] = nodemailer.createTransport smtpTransport value
+			unless value.useUserCredentials
+				console.log "Setup email server [#{key}]".green
+				transporters[key] = nodemailer.createTransport smtpTransport value
 
 	if not transporters.default?
 		transporters.default = nodemailer.createTransport smtpTransport
