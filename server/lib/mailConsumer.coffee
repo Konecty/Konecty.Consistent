@@ -97,8 +97,10 @@ mailConsumer.sendEmail = (record, cb) ->
 		mail.cc = null
 		mail.bcc = null
 
+	serverHost = server?.transporter?.options?.host
 	server.sendMail mail, Meteor.bindEnvironment (err, response) ->
 		if err?
+			err.host = serverHost || record.server
 			NotifyErrors.notify 'MailError', err, {mail: mail, err: err}
 			Konsistent.Models['Message'].update {_id: record._id}, {$set: {status: 'Falha no Envio', error: err}}
 			console.log '📧 ', "Email error: #{JSON.stringify err, null, ' '}".red
@@ -109,7 +111,7 @@ mailConsumer.sendEmail = (record, cb) ->
 				Konsistent.Models['Message'].remove _id: record._id
 			else
 				Konsistent.Models['Message'].update { _id: record._id }, { $set: { status: 'Enviada' } }
-			console.log '📧 ', "Email sent to #{response.accepted.join(', ')} via [#{record.server}]".green
+			console.log '📧 ', "Email sent to #{response.accepted.join(', ')} via [#{serverHost || record.server}]".green
 		cb()
 
 mailConsumer.send = (record, cb) ->
