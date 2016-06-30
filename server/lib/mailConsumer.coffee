@@ -145,7 +145,7 @@ mailConsumer.send = (record, cb) ->
 mailConsumer.consume = ->
 	query =
 		type: 'Email'
-		status: 'Enviando'
+		status: { $in: [ 'Enviando', 'Send' ] }
 	options =
 		limit: 10
 
