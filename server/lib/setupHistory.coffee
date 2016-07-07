@@ -993,7 +993,7 @@ Konsistent.History.processAlertsForOplogItem = (metaName, action, _id, data, upd
 				template: 'alert.html'
 				data: alertData
 				type: 'Email'
-				status: 'Enviando'
+				status: 'Send'
 				discard: true
 
 			Konsistent.Models['Message'].insert emailData
