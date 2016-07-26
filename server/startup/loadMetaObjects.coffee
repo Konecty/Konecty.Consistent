@@ -3,7 +3,7 @@
 rebuildReferences = ->
 	Konsistent.History.setup()
 
-	console.log 'Rebuilding references'
+	console.log '[konsistent] Rebuilding references'
 	Konsistent.References = buildReferences Meta
 
 registerMeta = (meta) ->
