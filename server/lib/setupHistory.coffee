@@ -10,7 +10,8 @@ Konsistent.References = {}
 
 # Get db name from connection string
 dbName = process.env.MONGO_URL.split('/').pop()
-console.log "[konsistent] === #{dbName} ===".green
+if _.isEmpty(process.env.DISABLE_KONSISTENT) or process.env.DISABLE_KONSISTENT is 'false' or process.env.DISABLE_KONSISTENT is '0'
+	console.log "[konsistent] === #{dbName} ===".green
 
 # Define fome keys to remove from saved data in history when data was created or updated
 keysToIgnore = ['_updatedAt', '_createdAt', '_updatedBy', '_createdBy', '_deletedBy', '_deletedBy']
