@@ -159,14 +159,18 @@ mailConsumer.consume = ->
 
 mailConsumer.start = ->
 	namespace = Konsistent.MetaObject.findOne _id: 'Namespace'
+	defaultExists = false
 
 	if _.isObject namespace?.emailServers
 		for key, value of namespace.emailServers
+			if key is 'default'
+				defaultExists = true
+
 			unless value.useUserCredentials
 				console.log "Setup email server [#{key}]".green
 				transporters[key] = nodemailer.createTransport smtpTransport value
 
-	if not transporters.default?
+	if not transporters.default? and not defaultExists
 		transporters.default = nodemailer.createTransport smtpTransport
 			service: 'SES'
 			auth:
