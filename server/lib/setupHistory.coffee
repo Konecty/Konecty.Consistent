@@ -240,7 +240,8 @@ Konsistent.History.createHistory = (metaName, action, id, data, updatedBy, updat
 		when 'delete'
 			log = "- #{log}".red
 
-	console.log log
+	if global.logAllRequests is true
+		console.log log
 
 	# Get history collection
 	history = Konsistent.Models["#{metaName}.History"]
