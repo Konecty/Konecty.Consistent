@@ -143,6 +143,7 @@ mailConsumer.send = (record, cb) ->
 			mailConsumer.sendEmail record, cb
 
 mailConsumer.consume = ->
+	mailConsumer.lockedAt = Date.now()
 	query =
 		type: 'Email'
 		status: { $in: [ 'Enviando', 'Send' ] }
@@ -174,3 +175,7 @@ mailConsumer.start = ->
 				pass: 'AglkLsjEKhE72RxtdQiBYDbmIGSDQrRYtTta567Swju9'
 
 	mailConsumer.consume()
+	setInterval ->
+		if Date.now() - mailConsumer.lockedAt > 10 * 60 * 1000 # 10 minutes
+			mailConsumer.consume()
+	, 1000
