@@ -147,6 +147,10 @@ mailConsumer.consume = ->
 	query =
 		type: 'Email'
 		status: { $in: [ 'Enviando', 'Send' ] }
+		$or: [
+			{ sendAt: { $exists: 0 } },
+			{ sendAt: { $lt: new Date } }
+		]
 	options =
 		limit: 10
 
