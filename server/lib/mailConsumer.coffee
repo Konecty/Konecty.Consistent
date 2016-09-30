@@ -90,6 +90,7 @@ mailConsumer.sendEmail = (record, cb) ->
 		cc: record.cc
 		bcc: record.bcc
 		attachments: record.attachments
+		headers: record.headers or []
 
 	if process.env.KONECTY_MODE isnt 'production'
 		mail.subject = "[DEV] [#{mail.to}] #{mail.subject}"
