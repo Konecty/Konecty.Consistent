@@ -92,6 +92,10 @@ mailConsumer.sendEmail = (record, cb) ->
 		attachments: record.attachments
 		headers: record.headers or []
 
+	if record.meta
+		for name, content of record.meta
+			mail.html += "<meta name='#{name}' content='#{content}'>"
+
 	if process.env.KONECTY_MODE isnt 'production'
 		mail.subject = "[DEV] [#{mail.to}] #{mail.subject}"
 		mail.to = 'team@konecty.com'
