@@ -187,4 +187,4 @@ mailConsumer.start = ->
 	setInterval ->
 		if Date.now() - mailConsumer.lockedAt > 10 * 60 * 1000 # 10 minutes
 			mailConsumer.consume()
-	, 1000
+	, 120000
