@@ -2,8 +2,7 @@ Router.onBeforeAction ->
 	if Meteor.userId()?
 		return @next()
 
-	@render 'login'
-
+	@render 'konsistentLogin'
 
 ListMetaController = RouteController.extend
 	template: 'ListMeta'
@@ -30,8 +29,6 @@ ListMetaController = RouteController.extend
 
 	waitOn: ->
 		return Meteor.subscribe 'konsistent/metaObject'
-
-
 
 Router.configure
 	layoutTemplate: 'slimLayout'
