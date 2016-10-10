@@ -1,6 +1,7 @@
 ###
 # @TODO test sincrony
 ###
+MongoOplog = Npm.require('mongo-oplog')
 
 @Meta = {}
 Konsistent.MetaByCollection = {}
@@ -33,6 +34,7 @@ Konsistent.History.setup = ->
 
 	for metaName, meta of Meta
 		metaNames.push "#{dbName}.#{meta.collection}"
+		metaNames.push "#{dbName}.#{meta.collection}.Trash"
 
 	# Create condition to get oplogs of update and insert types from data collections
 	queryData =
@@ -52,55 +54,19 @@ Konsistent.History.setup = ->
 	if lastProcessedOplog?.ts?
 		query.ts = $gt: lastProcessedOplog.ts
 
-	# Connect in local collection and bind callback into meteor fibers
-	MongoInternals.NpmModule.MongoClient.connect process.env.MONGO_OPLOG_URL, Meteor.bindEnvironment (err, db) ->
-		if err then throw err
+	oplog = MongoOplog(process.env.MONGO_OPLOG_URL, {
+		ts: lastProcessedOplog.ts,
+		ns: "(#{metaNames.join('|')})"
+	}).tail();
 
-		Konsistent.History.db = db
-
-		# Get oplog native collection
-		global.c = collection = db.collection 'oplog.rs'
-
-		# If there are no ts saved go to db to get last oplog registered
-		if not query.ts?
-			# Turn findOne sync
-			findOne = Meteor.wrapAsync _.bind collection.findOne, collection
-
-			# find last oplog record and get only ts value
-			lastOplogTimestamp = findOne {}, {ts: 1}, {sort: {ts: -1}}
-
-			# If there are return then add ts to oplog observer and save the ts into Konsistent collection
-			if lastOplogTimestamp?.ts?
-				query.ts = $gt: lastOplogTimestamp.ts
-				Konsistent.History.saveLastOplogTimestamp lastOplogTimestamp.ts
-
-		# Define query as tailable to receive insertions
-		options =
-			tailable: true
-
-		# Define a cursor with above query
-		global.oplogStream = stream = collection.find(query, options).stream()
-
-		stream.on 'error', Meteor.bindEnvironment (err) ->
-			if err? then throw err
-
-		stream.on 'data', Meteor.bindEnvironment (doc) ->
-			if doc?
-				ns = doc.ns.split '.'
-
-				Konsistent.History.processOplogItem doc
-
-		# Process each result from tailable cursor bindind into Meteor's fibers
-		# cursor.each Meteor.bindEnvironment (err, doc) ->
-		# 	if err? then throw err
-		# 	if doc?
-		# 		ns = doc.ns.split '.'
-
-		# 		Konsistent.History.processOplogItem doc
-
+	oplog.on 'op', Meteor.bindEnvironment (doc) ->
+		Konsistent.History.processOplogItem doc
 
 # Process each oplog item to verify if there are data to save as history
 Konsistent.History.processOplogItem = (doc) ->
+	console.log 'rKonsistent.History.processOplogItem', doc
+	return
+
 	# Split ns into array to get db name, meta name and if is a trash collection
 	ns = doc.ns.split '.'
 
@@ -484,7 +450,7 @@ Konsistent.History.updateRelationReference = (metaName, relation, lookupId, acti
 		pipeline.push group
 
 		# Wrap aggregate method into an async metero's method
-		aggregate = Meteor.wrapAsync _.bind collection.aggregate, collection
+		aggregate = Meteor.wrapAsync collection.aggregate, collection
 
 		# Try to execute agg and log error if fails
 		try
