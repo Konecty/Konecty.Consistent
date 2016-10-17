@@ -6,8 +6,6 @@ Package.describe({
 });
 
 Package.onUse(function(api) {
-  api.versionsFrom('1.0');
-
   api.use('blaze-html-templates');
   api.use('accounts-password');
   api.use('accounts-base');
@@ -62,4 +60,4 @@ Npm.depends({
   "bugsnag": "1.5.1",
   "coffee-script": "1.8.0",
   "xoauth2": "1.1.0"
-})
+});
