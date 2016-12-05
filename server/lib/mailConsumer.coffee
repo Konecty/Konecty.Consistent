@@ -98,26 +98,29 @@ mailConsumer.sendEmail = (record, cb) ->
 
 	if process.env.KONECTY_MODE isnt 'production'
 		mail.subject = "[DEV] [#{mail.to}] #{mail.subject}"
-		mail.to = 'team@konecty.com'
+		mail.to = null # 'team@konecty.com'
 		mail.cc = null
 		mail.bcc = null
 
-	serverHost = server?.transporter?.options?.host
-	server.sendMail mail, Meteor.bindEnvironment (err, response) ->
-		if err?
-			err.host = serverHost || record.server
-			NotifyErrors.notify 'MailError', err, {mail: mail, err: err}
-			Konsistent.Models['Message'].update {_id: record._id}, {$set: {status: 'Falha no Envio', error: err}}
-			console.log '📧 ', "Email error: #{JSON.stringify err, null, ' '}".red
-			return cb()
+	if mail.to
+		serverHost = server?.transporter?.options?.host
+		server.sendMail mail, Meteor.bindEnvironment (err, response) ->
+			if err?
+				err.host = serverHost || record.server
+				NotifyErrors.notify 'MailError', err, {mail: mail, err: err}
+				Konsistent.Models['Message'].update {_id: record._id}, {$set: {status: 'Falha no Envio', error: err}}
+				console.log '📧 ', "Email error: #{JSON.stringify err, null, ' '}".red
+				return cb()
 
-		if response?.accepted.length > 0
-			if record.discard is true
-				Konsistent.Models['Message'].remove _id: record._id
-			else
-				Konsistent.Models['Message'].update { _id: record._id }, { $set: { status: 'Enviada' } }
-			console.log '📧 ', "Email sent to #{response.accepted.join(', ')} via [#{serverHost || record.server}]".green
-		cb()
+			if response?.accepted.length > 0
+				if record.discard is true
+					Konsistent.Models['Message'].remove _id: record._id
+				else
+					Konsistent.Models['Message'].update { _id: record._id }, { $set: { status: 'Enviada' } }
+				console.log '📧 ', "Email sent to #{response.accepted.join(', ')} via [#{serverHost || record.server}]".green
+			cb()
+	else
+		return cb()
 
 mailConsumer.send = (record, cb) ->
 	if not record.template?
