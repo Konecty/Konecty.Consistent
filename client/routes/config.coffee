@@ -1,9 +1,3 @@
-Router.onBeforeAction ->
-	if Meteor.userId()?
-		return @next()
-
-	@render 'konsistentLogin'
-
 ListMetaController = RouteController.extend
 	template: 'ListMeta'
 	data: ->
