@@ -6,6 +6,8 @@ Package.describe({
 });
 
 Package.onUse(function(api) {
+  api.use('npm-mongo', 'server');
+  api.use('mongo', 'server');
   api.use('blaze-html-templates');
   api.use('accounts-password');
   api.use('accounts-base');

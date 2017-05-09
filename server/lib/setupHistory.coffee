@@ -7,6 +7,7 @@ Konsistent.MetaByCollection = {}
 Konsistent.Models = {}
 Konsistent.History = {}
 Konsistent.References = {}
+Konsistent.tailHandle = null
 
 # Get db name from connection string
 dbName = process.env.MONGO_URL.split('/').pop()
@@ -19,11 +20,18 @@ keysToIgnore = ['_updatedAt', '_createdAt', '_updatedBy', '_createdBy', '_delete
 # Define collection Konsistent to save last state
 Konsistent.Models.Konsistent = new Meteor.Collection "Konsistent"
 
+CursorDescription = (collectionName, selector, options) ->
+  self = this;
+  self.collectionName = collectionName;
+  self.selector = Mongo.Collection._rewriteSelector(selector);
+  self.options = options || {};
+  return self
+
 
 # Method to init data obervation of all collections with meta.saveHistory equals to true
 Konsistent.History.setup = ->
 	if Konsistent.History?.db?
-		global.oplogStream.destroy()
+		Konsistent.tailHandle?.stop()
 		Konsistent.History.db.close()
 
 	# Get record that define last processed oplog
@@ -53,50 +61,58 @@ Konsistent.History.setup = ->
 		query.ts = $gt: lastProcessedOplog.ts
 
 	# Connect in local collection and bind callback into meteor fibers
-	MongoInternals.NpmModule.MongoClient.connect process.env.MONGO_OPLOG_URL, Meteor.bindEnvironment (err, db) ->
-		if err then throw err
+	# MongoInternals.NpmModule.MongoClient.connect process.env.MONGO_OPLOG_URL, Meteor.bindEnvironment (err, db) ->
+	# 	if err then throw err
 
-		Konsistent.History.db = db
+	Konsistent.History.db = new MongoInternals.Connection(process.env.MONGO_OPLOG_URL, { poolSize: 1 });
 
-		# Get oplog native collection
-		global.c = collection = db.collection 'oplog.rs'
+	# Get oplog native collection
+	# global.c = collection = db.collection 'oplog.rs'
 
-		# If there are no ts saved go to db to get last oplog registered
-		if not query.ts?
-			# Turn findOne sync
-			findOne = Meteor.wrapAsync _.bind collection.findOne, collection
+	# If there are no ts saved go to db to get last oplog registered
+	if not query.ts?
+		# Turn findOne sync
+		findOne = Meteor.wrapAsync _.bind collection.findOne, collection
 
-			# find last oplog record and get only ts value
-			lastOplogTimestamp = findOne {}, {ts: 1}, {sort: {ts: -1}}
+		# find last oplog record and get only ts value
+		lastOplogTimestamp = findOne {}, {ts: 1}, {sort: {ts: -1}}
 
-			# If there are return then add ts to oplog observer and save the ts into Konsistent collection
-			if lastOplogTimestamp?.ts?
-				query.ts = $gt: lastOplogTimestamp.ts
-				Konsistent.History.saveLastOplogTimestamp lastOplogTimestamp.ts
+		# If there are return then add ts to oplog observer and save the ts into Konsistent collection
+		if lastOplogTimestamp?.ts?
+			query.ts = $gt: lastOplogTimestamp.ts
+			Konsistent.History.saveLastOplogTimestamp lastOplogTimestamp.ts
 
-		# Define query as tailable to receive insertions
-		options =
-			tailable: true
+	cursorDescription = new CursorDescription('oplog.rs', query, {tailable: true});
+	console.log(cursorDescription);
 
-		# Define a cursor with above query
-		global.oplogStream = stream = collection.find(query, options).stream()
+	Konsistent.tailHandle = Konsistent.History.db.tail(cursorDescription, Meteor.bindEnvironment((doc) ->
+		ns = doc.ns.split '.'
+		Konsistent.History.processOplogItem doc
+	))
 
-		stream.on 'error', Meteor.bindEnvironment (err) ->
-			if err? then throw err
+	# # Define query as tailable to receive insertions
+	# options =
+	# 	tailable: true
 
-		stream.on 'data', Meteor.bindEnvironment (doc) ->
-			if doc?
-				ns = doc.ns.split '.'
+	# # Define a cursor with above query
+	# global.oplogStream = stream = collection.find(query, options).stream()
 
-				Konsistent.History.processOplogItem doc
+	# stream.on 'error', Meteor.bindEnvironment (err) ->
+	# 	if err? then throw err
 
-		# Process each result from tailable cursor bindind into Meteor's fibers
-		# cursor.each Meteor.bindEnvironment (err, doc) ->
-		# 	if err? then throw err
-		# 	if doc?
-		# 		ns = doc.ns.split '.'
+	# stream.on 'data', Meteor.bindEnvironment (doc) ->
+	# 	if doc?
+	# 		ns = doc.ns.split '.'
 
-		# 		Konsistent.History.processOplogItem doc
+	# 		Konsistent.History.processOplogItem doc
+
+	# Process each result from tailable cursor bindind into Meteor's fibers
+	# cursor.each Meteor.bindEnvironment (err, doc) ->
+	# 	if err? then throw err
+	# 	if doc?
+	# 		ns = doc.ns.split '.'
+
+	# 		Konsistent.History.processOplogItem doc
 
 
 # Process each oplog item to verify if there are data to save as history
