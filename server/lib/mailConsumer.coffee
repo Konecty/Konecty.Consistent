@@ -124,7 +124,7 @@ mailConsumer.sendEmail = (record, cb) ->
 					if record.discard is true
 						Konsistent.Models['Message'].remove _id: record._id
 					else
-						Konsistent.Models['Message'].update { _id: record._id }, { $set: { status: 'Enviada' } }
+						Konsistent.Models['Message'].update { _id: record._id }, { $set: { status: record.sentStatus or 'Enviada' } }
 					console.log '📧 ', "Email sent to #{response.accepted.join(', ')} via [#{serverHost || record.server}]".green
 				cb()
 		else
