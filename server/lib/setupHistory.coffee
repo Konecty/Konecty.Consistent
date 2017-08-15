@@ -67,7 +67,7 @@ Konsistent.History.setup = ->
 	Konsistent.History.db = new MongoInternals.Connection(process.env.MONGO_OPLOG_URL, { poolSize: 1 });
 
 	# Get oplog native collection
-	# global.c = collection = db.collection 'oplog.rs'
+	collection = Konsistent.History.db.rawCollection 'oplog.rs'
 
 	# If there are no ts saved go to db to get last oplog registered
 	if not query.ts?
@@ -83,7 +83,6 @@ Konsistent.History.setup = ->
 			Konsistent.History.saveLastOplogTimestamp lastOplogTimestamp.ts
 
 	cursorDescription = new CursorDescription('oplog.rs', query, {tailable: true});
-	console.log(cursorDescription);
 
 	Konsistent.tailHandle = Konsistent.History.db.tail(cursorDescription, Meteor.bindEnvironment((doc) ->
 		ns = doc.ns.split '.'
