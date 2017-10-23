@@ -143,7 +143,10 @@ mailConsumer.send = (record, cb) ->
 	emailTemplates emailTemplateOptions, Meteor.bindEnvironment (err, render) ->
 		if err?
 			NotifyErrors.notify 'MailError', err
-			Konsistent.Models['Message'].update {_id: record._id}, {$set: {status: 'Falha no Envio', error: err}}
+			if record.status is 'Falha no Envio'
+				Konsistent.Models['Message'].update {_id: record._id}, {$set: {status: 'Não Enviada', error: err}}
+			else
+				Konsistent.Models['Message'].update {_id: record._id}, {$set: {status: 'Falha no Envio', error: err}}
 			return cb()
 
 		record.data ?= {}
@@ -159,7 +162,7 @@ mailConsumer.send = (record, cb) ->
 			mailConsumer.sendEmail record, cb
 
 mailConsumer.consume = ->
-	mailConsumer.lockedAt = Date.now()
+	mailConsumer.lockedAtFailed = Date.now()
 	query =
 		type: 'Email'
 		status: { $in: [ 'Enviando', 'Send' ] }
@@ -169,6 +172,12 @@ mailConsumer.consume = ->
 		]
 	options =
 		limit: 10
+
+	if (!mailConsumer.lockedAtFailed || Date.now()-mailConsumer.lockedAtFailed >  6 * 60 * 60 * 1000) #6 hours
+		query.status.$in.push('Falha no Envio')
+		lockedAtFailed = now()
+		return
+
 
 	records = Konsistent.Models['Message'].find(query, options).fetch()
 	if records.length is 0
