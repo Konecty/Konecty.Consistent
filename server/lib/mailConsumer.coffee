@@ -131,6 +131,8 @@ mailConsumer.sendEmail = (record, cb) ->
 			return cb()
 
 mailConsumer.send = (record, cb) ->
+	Konsistent.Models['Message'].update {_id: record._id}, {$set: {status: 'A caminho'}}
+	
 	if not record.template?
 		return mailConsumer.sendEmail record, cb
 
