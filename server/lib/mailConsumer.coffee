@@ -131,6 +131,9 @@ mailConsumer.sendEmail = (record, cb) ->
 			return cb()
 
 mailConsumer.send = (record, cb) ->
+	console.log 'Updating e-mail message to \'On its way\' in order to not send the same message more than once'
+	Konsistent.Models['Message'].update {_id: record._id}, {$set: {status: 'A caminho'}}
+	
 	if not record.template?
 		return mailConsumer.sendEmail record, cb
 
